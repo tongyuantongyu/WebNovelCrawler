@@ -9,6 +9,7 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import asyncio
 import aiohttp
 
+threads = 2
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 dirn = os.getcwd()
 hd = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2486.0 Safari/537.36 Edge/13.10586'}
@@ -130,7 +131,7 @@ class Novel_Syosetu:
         self.menu_raw = self.metapage.find('div',class_='index_box')
         async with aiohttp.ClientSession(headers=hd,cookies=cookie) as session:
             tasks = []
-            semaphore = asyncio.Semaphore(2)
+            semaphore = asyncio.Semaphore(threads)
             for element in self.menu_raw:
                 try:
                     if element['class'] == ['novel_sublist2']:

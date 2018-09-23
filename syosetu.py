@@ -129,7 +129,7 @@ class Novel_Syosetu:
         self.menu_raw = self.metapage.find('div',class_='index_box')
         async with aiohttp.ClientSession(headers=hd) as session:
             tasks = []
-            semaphore = asyncio.Semaphore(2)
+            semaphore = asyncio.Semaphore(threads)
             for element in self.menu_raw:
                 try:
                     if element['class'] == ['novel_sublist2']:
