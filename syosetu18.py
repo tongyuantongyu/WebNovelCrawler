@@ -84,7 +84,9 @@ def correct_point_ruby_as_bold(bs):
 def build_page(content, url):
     page = BeautifulSoup(content, 'lxml')
     subtitle = page.find('p', class_="novel_subtitle").get_text()
-    content = correct_point_ruby_as_bold(page.find('div', id="novel_honbun", class_="novel_view")).prettify()
+    content = page.find('div', id="novel_honbun", class_="novel_view")
+    correct_point_ruby_as_bold(content)
+    content = content.prettify()
     html = '<html>\n<head>\n' + '<title>' + subtitle + '</title>\n</head>\n<body>\n<div>\n<h3>' + subtitle + '</h3>\n' + content + '</div>\n</body>\n</html>'
     name = url.split('/')[-2]
     built_page = epub.EpubHtml(title=subtitle, file_name=name + '.xhtml', content=html, lang='ja_jp')
