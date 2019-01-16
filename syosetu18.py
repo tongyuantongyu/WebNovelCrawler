@@ -9,14 +9,13 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import asyncio
 import aiohttp
 
-threads = 2
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 dirn = os.getcwd()
 hd = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2486.0 Safari/537.36 Edge/13.10586'}
 proxy = {}
-# proxy = {'http': 'http://[::1]:10090', 'https': 'https://[::1]:10090'}
 paio = None
-# paio = 'http://[::1]:10090'
+#proxy = {'http': 'http://[::1]:10090', 'https': 'https://[::1]:10090'}
+#paio = 'http://[::1]:10090'
 factory = BeautifulSoup('<b></b>', 'lxml')
 cookie = {'over18': 'yes'}
 
@@ -101,7 +100,7 @@ async def load_page(url, session, semaphore):
     with await semaphore:
         async with session.get(url, proxy=paio) as response:
             content = await response.read()
-            print('[Coroutine] Fetch Task Finished for Link: ' + url)
+            print('[Coroutine] {0} Fetch Task Finished for Link: {1}'.format(response.status, url))
     return (url, content)
 
 class Novel_Syosetu:
@@ -114,7 +113,7 @@ class Novel_Syosetu:
     
     def get_meta(self):
         print('[Main Thread] Fetching Metadata...')
-        self.metapage_raw = getpage('https://ncode.syosetu.com/' + self.id +'/')
+        self.metapage_raw = getpage('https://novel18.syosetu.com/' + self.id +'/')
         self.metapage = BeautifulSoup(self.metapage_raw.content, 'lxml')
         self.novel_title = self.metapage.find('title').get_text()
         self.author = self.metapage.find('div', class_="novel_writername").get_text().split('：')[-1][:-1]
@@ -126,19 +125,19 @@ class Novel_Syosetu:
             self.attention = self.metapage.find('div', class_="contents1").find('span', class_="attention").get_text()
         except AttributeError:
             self.attention = None
-        self.tag = gettag(self.metapage.find('div', class_="contents1").get_text())
+#        self.tag = gettag(self.metapage.find('div', class_="contents1").get_text())
         
     async def get_pages(self):
         print('[Main Thread] Fetching Pages...')
         self.menu_raw = self.metapage.find('div',class_='index_box')
-        async with aiohttp.ClientSession(headers=hd,cookies=cookie) as session:
+        async with aiohttp.ClientSession(headers=hd, cookies=cookie) as session:
             tasks = []
-            semaphore = asyncio.Semaphore(threads)
+            semaphore = asyncio.Semaphore(32)
             for element in self.menu_raw:
                 try:
                     if element['class'] == ['novel_sublist2']:
                         t = element.find('a')
-                        url = 'https://ncode.syosetu.com' + t['href']
+                        url = 'https://novel18.syosetu.com' + t['href']
                         task = asyncio.ensure_future(load_page(url, session, semaphore))
                         tasks.append(task)
                 except TypeError:
@@ -153,7 +152,7 @@ class Novel_Syosetu:
         for element in self.menu_raw:
             try:
                 if element['class'] == ['novel_sublist2']:
-                    url = 'https://ncode.syosetu.com' + element.find('a')['href']
+                    url = 'https://novel18.syosetu.com' + element.find('a')['href']
                     title = element.find('a').string
                     filename, epub_page = build_page(self.fetch_pages[url], url)
                     self.book.add_item(epub_page)
