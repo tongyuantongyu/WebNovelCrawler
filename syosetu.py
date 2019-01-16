@@ -18,10 +18,11 @@ hd = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2486.0 Safari/537.36 Edge/13.10586'}
 proxy = {}
 paio = None
-# proxy = {'http': 'http://[::1]:10090', 'https': 'https://[::1]:10090'}
-# paio = 'http://[::1]:10090'
+# proxy = {'http': 'http://[::1]:8080', 'https': 'https://[::1]:8080'}
+# paio = 'http://[::1]:8080'
 fullruby = True
 factory = BeautifulSoup('<b></b>', 'lxml')
+threads = 8
 
 css = '''@namespace h "http://www.w3.org/1999/xhtml";
 body {
@@ -147,7 +148,7 @@ class Novel_Syosetu:
         self.menu_raw = self.metapage.find('div', class_='index_box')
         async with aiohttp.ClientSession(headers=hd) as session:
             tasks = []
-            semaphore = asyncio.Semaphore(8)
+            semaphore = asyncio.Semaphore(threads)
             for element in self.menu_raw:
                 try:
                     if element['class'] == ['novel_sublist2']:

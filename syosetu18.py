@@ -8,16 +8,21 @@ import base64
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import asyncio
 import aiohttp
+import yomituki
+import bs4
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 dirn = os.getcwd()
-hd = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2486.0 Safari/537.36 Edge/13.10586'}
+hd = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2486.0 Safari/537.36 Edge/13.10586'}
 proxy = {}
 paio = None
-#proxy = {'http': 'http://[::1]:10090', 'https': 'https://[::1]:10090'}
-#paio = 'http://[::1]:10090'
+# proxy = {'http': 'http://[::1]:8080', 'https': 'https://[::1]:8080'}
+# paio = 'http://[::1]:8080'
+fullruby = True
 factory = BeautifulSoup('<b></b>', 'lxml')
 cookie = {'over18': 'yes'}
+threads = 8
 
 css = '''@namespace h "http://www.w3.org/1999/xhtml";
 body {
@@ -59,18 +64,21 @@ a[href]:hover {
   height: 100%;
 }'''
 
+
 def getpage(link):
     gethtml = requests.get(link, headers=hd, proxies=proxy, cookies=cookie, verify=False)
     return gethtml
+
 
 def gettag(word):
     tags = []
     while '〔' in word:
         s = word.find('〔')
         e = word.find('〕')
-        tags.append(word[s:e+1])
-        word = word[e+1:]
+        tags.append(word[s:e + 1])
+        word = word[e + 1:]
     return tags
+
 
 def correct_point_ruby_as_bold(bs):
     for ruby in bs.find_all('ruby'):
@@ -80,28 +88,35 @@ def correct_point_ruby_as_bold(bs):
             rep.string = ruby.find('rb').string.split()[0]
             ruby.replace_with(rep)
 
+
 def build_page(content, url):
     page = BeautifulSoup(content, 'lxml')
     subtitle = page.find('p', class_="novel_subtitle").get_text()
     content = page.find('div', id="novel_honbun", class_="novel_view")
     correct_point_ruby_as_bold(content)
-    content = content.prettify()
+    if fullruby:
+        content = yomituki.ruby_div(content)
+    else:
+        content = content.prettify()
     html = '<html>\n<head>\n' + '<title>' + subtitle + '</title>\n</head>\n<body>\n<div>\n<h3>' + subtitle + '</h3>\n' + content + '</div>\n</body>\n</html>'
     name = url.split('/')[-2]
     built_page = epub.EpubHtml(title=subtitle, file_name=name + '.xhtml', content=html, lang='ja_jp')
     return name, built_page
 
+
 def build_section(sec):
     head = epub.Section(sec[0])
     main = tuple(sec[1:])
-    return (head, main)
+    return head, main
+
 
 async def load_page(url, session, semaphore):
     with await semaphore:
         async with session.get(url, proxy=paio) as response:
             content = await response.read()
             print('[Coroutine] {0} Fetch Task Finished for Link: {1}'.format(response.status, url))
-    return (url, content)
+    return url, content
+
 
 class Novel_Syosetu:
     def __init__(self, novel_id):
@@ -110,10 +125,10 @@ class Novel_Syosetu:
         self.book.set_identifier(self.id)
         self.book.set_language('jp')
         self.book.spine = ['nav']
-    
+
     def get_meta(self):
         print('[Main Thread] Fetching Metadata...')
-        self.metapage_raw = getpage('https://novel18.syosetu.com/' + self.id +'/')
+        self.metapage_raw = getpage('https://novel18.syosetu.com/' + self.id + '/')
         self.metapage = BeautifulSoup(self.metapage_raw.content, 'lxml')
         self.novel_title = self.metapage.find('title').get_text()
         self.author = self.metapage.find('div', class_="novel_writername").get_text().split('：')[-1][:-1]
@@ -125,14 +140,15 @@ class Novel_Syosetu:
             self.attention = self.metapage.find('div', class_="contents1").find('span', class_="attention").get_text()
         except AttributeError:
             self.attention = None
-#        self.tag = gettag(self.metapage.find('div', class_="contents1").get_text())
-        
+
+    #        self.tag = gettag(self.metapage.find('div', class_="contents1").get_text())
+
     async def get_pages(self):
         print('[Main Thread] Fetching Pages...')
-        self.menu_raw = self.metapage.find('div',class_='index_box')
+        self.menu_raw = self.metapage.find('div', class_='index_box')
         async with aiohttp.ClientSession(headers=hd, cookies=cookie) as session:
             tasks = []
-            semaphore = asyncio.Semaphore(32)
+            semaphore = asyncio.Semaphore(threads)
             for element in self.menu_raw:
                 try:
                     if element['class'] == ['novel_sublist2']:
@@ -145,7 +161,7 @@ class Novel_Syosetu:
             scheduled = asyncio.gather(*tasks)
             fetch_pages = await scheduled
             self.fetch_pages = {page[0]: page[1] for page in fetch_pages}
-    
+
     def build_menu(self):
         print('[Main Thread] Building Menu...')
         self.menu = [['メニュー']]
@@ -167,12 +183,13 @@ class Novel_Syosetu:
             except TypeError:
                 pass
         self.book.toc = tuple([build_section(sec) for sec in self.menu])
-                    
+
     def post_process(self):
         self.book.add_item(epub.EpubNcx())
         self.book.add_item(epub.EpubNav())
-        self.book.add_item(epub.EpubItem(uid="style_nav", file_name="style/nav.css", media_type="text/css", content=css))
-        
+        self.book.add_item(
+            epub.EpubItem(uid="style_nav", file_name="style/nav.css", media_type="text/css", content=css))
+
     def build_epub(self):
         print('[Main Thread] Building Book...')
         if len(self.novel_title) > 63:
@@ -181,6 +198,7 @@ class Novel_Syosetu:
             self.file_name = self.novel_title[:63]
         epub.write_epub(dirn + '\\' + self.file_name + '.epub', self.book, {})
         print('[Main Thread] Finished. File saved.')
+
 
 if __name__ == '__main__':
     novel_id = input('[Initial] Input novel id here: ')
@@ -192,6 +210,3 @@ if __name__ == '__main__':
     syo.build_menu()
     syo.post_process()
     syo.build_epub()
-
-
-
