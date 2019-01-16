@@ -18,5 +18,5 @@ TODO:
 1. More site.
 2. Auto proxy swtich to prevent NoneType Error caused by anti-crawl.
 
-Required libs: requests, beautifulsoup4, ebooklib, aiohttp
+Required libs: requests, beautifulsoup4, ebooklib, aiohttp</br>
 Additional required libs for furigana: kanome, kakasi
