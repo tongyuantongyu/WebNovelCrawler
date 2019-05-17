@@ -1,6 +1,7 @@
 # coding:utf-8
 
 import requests
+import itertools
 from bs4 import BeautifulSoup
 import os
 from ebooklib import epub
@@ -17,8 +18,8 @@ hd = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2486.0 Safari/537.36 Edge/13.10586'}
 proxy = {}
 paio = None
-# proxy = {'http': 'http://[::1]:8080', 'https': 'https://[::1]:8080'}
-# paio = 'http://[::1]:8080'
+# proxy = {'http': 'http://[::1]:10002', 'https': 'https://[::1]:10002'}
+# paio = 'http://[::1]:10002'
 fullruby = True
 threads = 2
 
@@ -71,7 +72,7 @@ def getpage(link):
 def build_page(content, url):
     page = BeautifulSoup(content, 'lxml')
     subtitle = page.find('h2', class_="episode-title").get_text().replace('\n', '').replace('\t', '')
-    content = page.find('div', id="novelBoby", class_="text ")
+    content = page.find('div', id="novelBoby", class_="text")
     if fullruby:
         content = yomituki.ruby_div(content)
     else:
@@ -92,6 +93,16 @@ async def load_page(url, session, semaphore):
     with await semaphore:
         async with session.get(url) as response:
             content = await response.read()
+            # if b'<div class="dots-indicator" id="LoadingEpisode"></div>' in content:
+            #     c = content.decode()
+            #     offset1 = c.find("<script>\n        $('div#novelBoby').load('/novel/episode_body?episode=")
+            #     offset2 = c.find("', {\n            'episode' : ")
+            #     offset3 = c.find(",\n            'token' : '")
+            #     load_link = "https://www.alphapolis.co.jp" + c[offset1 + 42: offset2] + "&token="
+            #     print("[Debug]", load_link)
+            #     load_link += c[offset3 + 25: offset3 + 57]
+            #     async with session.get(load_link) as response2:
+            #         content = await response2.read()
             print('[Coroutine] Fetch Task Finished for Link: ' + url)
     return url, content
 
@@ -119,6 +130,7 @@ class Novel_Alphapolis:
         print('[Main Thread] Fetching Pages...')
         self.menu_raw = self.metapage.find('div', class_='episodes')
         async with aiohttp.ClientSession(headers=hd) as session:
+            await session.get('https://www.alphapolis.co.jp/novel/' + self.id)
             tasks = []
             semaphore = asyncio.Semaphore(threads)
             for element in self.menu_raw:
@@ -161,7 +173,7 @@ class Novel_Alphapolis:
         self.book.add_item(epub.EpubNcx())
         self.book.add_item(epub.EpubNav())
         self.book.add_item(
-            epub.EpubItem(uid="style_nav", file_name="style/nav.css", media_type="text/css", content=css))
+                epub.EpubItem(uid="style_nav", file_name="style/nav.css", media_type="text/css", content=css))
 
     def build_epub(self):
         print('[Main Thread] Building Book...')

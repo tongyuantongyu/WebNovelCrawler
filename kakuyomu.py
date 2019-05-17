@@ -1,6 +1,7 @@
 # coding:utf-8
 
 import requests
+import itertools
 from bs4 import BeautifulSoup
 import os
 from ebooklib import epub
@@ -17,8 +18,8 @@ hd = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2486.0 Safari/537.36 Edge/13.10586'}
 proxy = {}
 paio = None
-# proxy = {'http': 'http://[::1]:8080', 'https': 'https://[::1]:8080'}
-# paio = 'http://[::1]:8080'
+# proxy = {'http': 'http://[::1]:10002', 'https': 'https://[::1]:10002'}
+# paio = 'http://[::1]:10002'
 fullruby = True
 threads = 16
 

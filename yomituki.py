@@ -18,6 +18,31 @@ def is_kana(character):
     return False
 
 
+# def splitter(org):
+#     start = 0
+#     iskana_p = False
+#     last_kanji = -1
+#     for index, iskana in enumerate(map(is_kana, org)):
+#         if iskana_p and not iskana:
+#             yield org[start:index], last_kanji - start
+#             start = index
+#         if not iskana:
+#             last_kanji = index
+#         iskana_p = iskana
+#     yield org[start:], last_kanji - start
+#
+#
+# def analyzer(org, yomi):
+#     _yomi = yomi[:]
+#     pindex = 0
+#     for word, index in list(splitter(org))[::-1]:
+#         _yomi = _yomi[:pindex] if pindex else _yomi
+#         kana_part = word[index+1:]
+#         yield _yomi[_yomi.rfind(kana_part) - 1:]
+#         yield kana_part
+#         pindex -= len(kana_part)
+
+
 def hantei(word):
     org = word.surface
     kata = word.reading
@@ -73,7 +98,8 @@ def ruby_div(div):
     plain = '<div>'
     for i in div:
         if isinstance(i, bs4.element.NavigableString):
-            pass
+            if i.strip():
+                plain += ruby_text(str(i))
         elif isinstance(i, bs4.element.Tag):
             plain += ruby_p(i)
     plain += '</div>'
