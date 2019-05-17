@@ -1,6 +1,7 @@
 # coding:utf-8
 
 import requests
+import itertools
 from bs4 import BeautifulSoup
 import os
 from ebooklib import epub
@@ -17,8 +18,8 @@ hd = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2486.0 Safari/537.36 Edge/13.10586'}
 proxy = {}
 paio = None
-# proxy = {'http': 'http://[::1]:8080', 'https': 'https://[::1]:8080'}
-# paio = 'http://[::1]:8080'
+# proxy = {'http': 'http://[::1]:10002', 'https': 'https://[::1]:10002'}
+# paio = 'http://[::1]:10002'
 fullruby = True
 factory = BeautifulSoup('<b></b>', 'lxml')
 cookie = {'over18': 'yes'}
@@ -98,7 +99,17 @@ def build_page(content, url):
         content = yomituki.ruby_div(content)
     else:
         content = content.prettify()
-    html = '<html>\n<head>\n' + '<title>' + subtitle + '</title>\n</head>\n<body>\n<div>\n<h3>' + subtitle + '</h3>\n' + content + '</div>\n</body>\n</html>'
+    append = page.find('div', id="novel_a", class_="novel_view")
+    if append is not None:
+        correct_point_ruby_as_bold(append)
+        if fullruby:
+            append = yomituki.ruby_div(append)
+        else:
+            append = append.prettify()
+        append = '<hr>' + append
+    else:
+        append = ''
+    html = '<html>\n<head>\n' + '<title>' + subtitle + '</title>\n</head>\n<body>\n<div>\n<h3>' + subtitle + '</h3>\n' + content + append + '</div>\n</body>\n</html>'
     name = url.split('/')[-2]
     built_page = epub.EpubHtml(title=subtitle, file_name=name + '.xhtml', content=html, lang='ja_jp')
     return name, built_page
@@ -188,7 +199,7 @@ class Novel_Syosetu:
         self.book.add_item(epub.EpubNcx())
         self.book.add_item(epub.EpubNav())
         self.book.add_item(
-            epub.EpubItem(uid="style_nav", file_name="style/nav.css", media_type="text/css", content=css))
+                epub.EpubItem(uid="style_nav", file_name="style/nav.css", media_type="text/css", content=css))
 
     def build_epub(self):
         print('[Main Thread] Building Book...')
