@@ -90,7 +90,7 @@ def build_section(sec):
 
 
 async def load_page(url, session, semaphore):
-    with await semaphore:
+    async with semaphore:
         async with session.get(url) as response:
             content = await response.read()
             # if b'<div class="dots-indicator" id="LoadingEpisode"></div>' in content:

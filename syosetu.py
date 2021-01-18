@@ -121,7 +121,7 @@ def build_section(sec):
 
 
 async def load_page(url, session, semaphore):
-    with await semaphore:
+    async with semaphore:
         async with session.get(url, proxy=paio) as response:
             content = await response.read()
             print('[Coroutine] Fetch Task Finished for Link: ' + url)
