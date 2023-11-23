@@ -14,9 +14,24 @@ Proxies may or may not be used varies from site to site. Configuration is in the
 
 Furigana uses kanome and kakasi to work, and will be slow when processing novel that has a lot of words.
 
-TODO:
+## Example of use
+```
+> python3 kakuyomu.fixed.py
+[Initial] Input novel id here: 1177354054880254749
+
+[Main Thread] Fetching Metadata...
+	...
+[Coroutine] Fetch Task Finished for Link: https://kakuyomu.jp/works/1177354054880254749/episodes/1177354054882895659
+[Main Thread] Building Menu...
+[Main Thread] Building Book...
+[Main Thread] Finished. File saved.
+```
+
+## TODO:
 1. More site.
 2. Auto proxy swtich to prevent NoneType Error caused by anti-crawl.
 
-Required libs: requests, beautifulsoup4, ebooklib, aiohttp</br>
-Additional required libs for furigana: kanome, kakasi
+## Required libs: 
+requests, beautifulsoup4, ebooklib, aiohttp</br>
+## Additional required libs for furigana: 
+kanome, kakasi
