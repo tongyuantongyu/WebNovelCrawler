@@ -4,7 +4,7 @@ A Python Novel Crawler &amp; Epub Builder using asyncio
 
 This program uses python's new asyncio package to fetch pages.
 
-Works with Python3.5 or higher, but only tested with Python3.6
+Works with Python3.5 or higher, but only tested with Python3.6 and Python3.8.10
 
 Syosetu: id means nxxxxxx if you want to crawl ncode.syosetu.com/nxxxxxx/</br></br>
 Alphapolis: id means xxxxx/xxxxx if you want to crawl www.alphapolis.co.jp/novel/xxxxx/xxxxx</br></br>
