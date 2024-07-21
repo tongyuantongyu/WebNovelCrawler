@@ -1,0 +1,7 @@
+trio
+beautifulsoup4
+tqdm
+EbookLib
+Janome
+pykakasi
+httpx

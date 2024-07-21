@@ -1,0 +1,126 @@
+from datetime import datetime
+import re
+import sys
+import zoneinfo
+
+import trio
+from bs4 import BeautifulSoup
+from tqdm import tqdm
+
+from util import Chapter, Episode
+from .base import Base
+from .tools import *
+
+
+class Syosetu(Base):
+    source = "syosetu"
+    zone = zoneinfo.ZoneInfo('Asia/Tokyo')
+
+    def __init__(self, book_id, limit=2, retry=3):
+        super().__init__(book_id, limit, retry, source_unique_episode_id=True)
+
+        self.client.cookies.update({'over18': 'yes'})
+        self.is_r18 = False
+
+    confident_re = re.compile(r"(https?://)?(ncode|novel18)\.syosetu\.com/(?P<id>n[0-9]{4}[a-z]{1,2})/?")
+    maybe_re = re.compile(r"n[0-9]{4}[a-z]{1,2}")
+
+    @classmethod
+    def sniff(cls, source):
+        match = cls.confident_re.match(source)
+        if match:
+            return 10, match.group("id")
+        match = cls.maybe_re.search(source)
+        if match:
+            return 5, match[0]
+        return 0, ""
+
+    @property
+    def site(self):
+        return "novel18" if self.is_r18 else "ncode"
+
+    def incremental_parse_syosetu_menu(self, content: BeautifulSoup):
+        menu_el = content.select_one('.index_box')
+        assert menu_el is not None, "Can't find menu"
+        for el in menu_el:
+            match el:
+                case Tag(attrs={'class': 'chapter_title'}):
+                    self.menu.push_item(Chapter('', el.text, 1))
+                case Tag(attrs={'class': 'novel_sublist2'}):
+                    link = el.select_one('a')
+                    create = el.select_one('.long_update').text.removesuffix('（改）').strip()
+                    update = el.select_one('.long_update span')
+                    if update is not None:
+                        update = update['title'].removesuffix(' 改稿')
+                    else:
+                        update = create
+
+                    episode_id = link['href'].split('/')[2]
+                    title = link.text.strip()
+                    version = int(datetime.strptime(update, '%Y/%m/%d %H:%M').replace(tzinfo=self.zone).timestamp())
+                    creation = int(datetime.strptime(create, '%Y/%m/%d %H:%M').replace(tzinfo=self.zone).timestamp())
+
+                    self.menu.push_item(Episode(episode_id, title, version, creation))
+
+    async def fetch_metadata_extra(self, page, recv: trio.Event, send: trio.Event):
+        async with self.limiter:
+            page = await self.get_retry(f"https://{self.site}.syosetu.com/{self.book_id}/?p={page}")
+        content = BeautifulSoup(page.content, "lxml-xml")
+
+        await recv.wait()
+        self.incremental_parse_syosetu_menu(content)
+        self.progress.update()
+        send.set()
+
+    async def fetch_metadata(self):
+        page = await self.get_retry(f"https://{self.site}.syosetu.com/{self.book_id}/")
+        if page.has_redirect_location:
+            assert "novel18" in page.next_request.url.host
+            self.is_r18 = True
+            print(f"R18 book detected.")
+            page = await self.send_retry(page.next_request)
+
+        assert page.is_success, "unexpected redirect"
+
+        content = BeautifulSoup(page.content, "lxml-xml")
+        self.title = content.find('title').text  # <---
+        self.author = content.select_one('meta[name="twitter:creator"]').attrs['content']
+        self.description = content.select_one('#novel_ex').text
+        self.incremental_parse_syosetu_menu(content)
+
+        pager = content.select_one('.novelview_pager')
+        if pager is not None:
+            last = pager.select_one('.novelview_pager-last')
+            pages = int(last['href'].split('?p=')[-1])
+            print(f"Multi page metadata with {pages} pages.")
+
+            with tqdm(desc="Fetching metadata", total=pages, initial=1, file=sys.stdout) as self.progress:
+                async with trio.open_nursery() as nursery:
+                    recv = trio.Event()
+                    recv.set()
+                    self.limiter = trio.CapacityLimiter(self.limit)
+
+                    for i in range(2, pages + 1):
+                        send = trio.Event()
+                        nursery.start_soon(self.fetch_metadata_extra, i, recv, send)
+                        recv = send
+            self.progress = None
+
+    async def fetch_episode(self, episode: Episode):
+        async with self.limiter:
+            page = await self.get_retry(f"https://{self.site}.syosetu.com/{self.book_id}/{episode.id}/")
+
+        content = BeautifulSoup(page.content, "lxml-xml")
+        content = content.select_one("#novel_honbun")
+        content.attrs = {'class': 'content'}
+
+        # clean id on <p> and mark blank element
+        for p in content.select('p'):
+            del p.attrs['id']
+            if all(isinstance(t, Tag) and t.name == 'br' for t in p):
+                p.attrs['class'] = 'blank'
+
+        normalize_ruby_emphasis(content)
+
+        content = content.decode()
+        return content
