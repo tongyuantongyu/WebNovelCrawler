@@ -1,13 +1,11 @@
+import code
+import sys
+
 import cmd
 import sources
 
 
-def handle_once(last):
-    line = input('> ')
-    fields = [i for i in line.split(' ') if i]
-    if not fields:
-        return last
-
+def handle_once(fields, last):
     raw_action, *args = fields
     action = cmd.Base.commands.get(raw_action)
     if action is None:
@@ -19,29 +17,54 @@ def handle_once(last):
             print(f'Command {raw_action} does not accept parameters')
         try:
             last = [sources.Base.detect_source(arg) for arg in args]
-        except ValueError as e:
+        except (KeyError, ValueError) as e:
             print(e)
-            return []
+            return None
 
     if action.parametric:
+        if last is None:
+            print(f'Command {raw_action} accepts parameters but no parameter is given')
+            return None
         for source, source_id in last:
             action().execute(source, source_id)
     else:
-        last = []
+        last = None
         action().execute(None, None)
 
     return last
 
 
-def main():
-    print("Novel Crawl and Storage tool")
-    last = []
-    while True:
-        try:
-            last = handle_once(last)
-        except KeyboardInterrupt:
-            return
+class MyInteractive(code.InteractiveConsole):
+    def __init__(self):
+        super().__init__()
+        self.closed = False
+        self.last = None
+
+    def write(self, data):
+        sys.stdout.write(data)
+        sys.stdout.flush()
+
+    def raw_input(self, prompt=""):
+        if self.closed:
+            raise EOFError()
+
+        return super().raw_input(prompt)
+
+    def runsource(self, source, filename="<input>", symbol="single"):
+        fields = [i for i in source.split(' ') if i]
+        if not fields:
+            return False
+
+        if fields[0] == "exit":
+            self.closed = True
+            return False
+
+        self.last = handle_once(fields, self.last)
+        return False
 
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) > 1:
+        handle_once(sys.argv[1:], None)
+    else:
+        MyInteractive().interact(banner="Novel Crawl and Storage tool", exitmsg="")

@@ -1,4 +1,9 @@
+.idea
+__pycache__
+
 epubfile
 epub_ruby_file
 texfile
 *.db
+
+tmp.py
