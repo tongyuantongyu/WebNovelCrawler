@@ -168,7 +168,7 @@ class Base(metaclass=make_track_sub_meta("source")):
                 old_episodes = {episode.id for episode in old_menu.get_episodes()}
                 different = old_episodes.difference(episode.id for episode in episodes)
                 if different:
-                    create_or_append(old_data, "menu", base64.b64encode(book.menu))
+                    create_or_append(old_data, "menu", str(base64.b64encode(book.menu)))
                 new_menu = pickle.dumps(self.menu)
             else:
                 # episode id is not unique, be conservative
