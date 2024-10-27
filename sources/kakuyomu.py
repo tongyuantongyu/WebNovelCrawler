@@ -4,13 +4,14 @@ import re
 from datetime import datetime
 
 import httpx
+import trio
 from bs4 import BeautifulSoup
 
 from util import Chapter, Episode
 from .base import Base
 from .tools import *
 
-query = """query GetWorkPage($workId: ID!) {
+query_metadata = """query GetWorkPage($workId: ID!) {
   work(id: $workId) {
     id
     title
@@ -34,6 +35,19 @@ query = """query GetWorkPage($workId: ID!) {
           title
           publishedAt
           editedAt
+        }
+      }
+    }
+  }
+}"""
+
+
+query_episodes = """query GetWorkPage($workId: ID!) {
+  work(id: $workId) {
+    tableOfContents {
+      episodeUnions {
+        ... on Episode {
+          id
           bodyHTML
         }
       }
@@ -51,6 +65,7 @@ class Kakuyomu(Base):
         self.client.headers.update({"X-Requested-With": "XMLHttpRequest"})
         self.client.timeout = httpx.Timeout(60)
         self.episodes = {}
+        self.episodes_loaded = None
         self.progress = None
 
     confident_re = re.compile(r"(https?://)?kakuyomu\.jp/works/(?P<id>[0-9]{19,20})/?")
@@ -70,11 +85,32 @@ class Kakuyomu(Base):
             return 1, match[0]
         return 0, ""
 
+    async def load_episodes(self):
+        if self.episodes_loaded is None:
+            self.episodes_loaded = trio.Event()
+        else:
+            await self.episodes_loaded.wait()
+            return
+
+        page = await self.post_retry("https://kakuyomu.jp/graphql?opname=GetWorkPage", json={
+            "operationName": "GetWorkPage",
+            "variables": {"workId": self.book_id},
+            "query": query_episodes
+        })
+
+        data = json.loads(page.content)
+        work = data['data']['work']
+        for table in work['tableOfContents']:
+            for episode in table['episodeUnions']:
+                self.episodes[episode['id']] = episode['bodyHTML']
+
+        self.episodes_loaded.set()
+
     async def fetch_metadata(self):
         page = await self.post_retry("https://kakuyomu.jp/graphql?opname=GetWorkPage", json={
             "operationName": "GetWorkPage",
             "variables": {"workId": self.book_id},
-            "query": query
+            "query": query_metadata
         })
         data = json.loads(page.content)
 
@@ -91,9 +127,11 @@ class Kakuyomu(Base):
                 version = int(datetime.fromisoformat(episode['editedAt']).timestamp())
                 creation = int(datetime.fromisoformat(episode['publishedAt']).timestamp())
                 self.menu.push_item(Episode(episode['id'], episode['title'], version, creation))
-                self.episodes[episode['id']] = episode['bodyHTML']
 
     async def fetch_episode(self, episode: Episode):
+        if not self.episodes:
+            await self.load_episodes()
+
         content = BeautifulSoup(self.episodes[episode.id], 'lxml')
         content = content.select_one("body")
         content.name = 'div'
