@@ -4,5 +4,6 @@ from .help import Help
 from .init_db import Init
 from .make_epub import MakeEpub, MakeEpubRuby
 from .make_tex import MakeTex
+from .update import Update
 
 from .base import Base

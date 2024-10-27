@@ -66,6 +66,11 @@ class NovelDB:
                          (title, author, description, menu, old_data, book_id))
         self.db.commit()
 
+    def findall_book(self):
+        self.cur.execute("SELECT source, source_id FROM book")
+        books = self.cur.fetchall()
+        return books
+
     # Episode management
 
     def add_episode(self, book_id, source_id, title, content, version, creation):
