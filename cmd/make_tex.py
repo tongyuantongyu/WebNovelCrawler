@@ -85,7 +85,7 @@ class MakeTex(Base):
         folder = pathlib.Path("texfile") / folder
         os.makedirs(folder, exist_ok=True)
         entries = [item for item in linear_menu.items if isinstance(item, Episode)]
-        for idx, item in enumerate(tqdm(entries, desc="Rubify episodes", file=sys.stdout)):
+        for idx, item in enumerate(tqdm(entries, desc="Render episodes", file=sys.stdout)):
             tex = render_episode(episodes[item.id])
             with open(folder / f"{idx + 1:0>4}.tex", "wb") as episode:
                 episode.write(tex.encode())

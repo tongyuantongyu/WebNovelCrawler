@@ -83,9 +83,9 @@ class Syosetu(Base):
         assert page.is_success, "unexpected redirect"
 
         content = BeautifulSoup(page.content, "lxml-xml")
-        self.title = content.find('title').text  # <---
-        self.author = content.select_one('meta[name="twitter:creator"]').attrs['content']
-        self.description = content.select_one('#novel_ex').text
+        self.title = content.find('title').text.strip()  # <---
+        self.author = content.select_one('meta[name="twitter:creator"]').attrs['content'].strip()
+        self.description = content.select_one('#novel_ex').text.strip()
         self.incremental_parse_syosetu_menu(content)
 
         pager = content.select_one('.novelview_pager')
