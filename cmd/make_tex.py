@@ -15,9 +15,12 @@ from .base import Base
 
 def render_line(p: bs4.Tag):
     text = ''
-    if 'class' in p.attrs and 'blank' in p.attrs['class']:
-        count = len([node for node in p.contents if isinstance(node, Tag) if node.name == 'br'])
-        return '\\\\' if count == 1 else f'\\vspace{{{count}\\baselineskip}}'
+    if 'class' in p.attrs:
+        if 'blank' in p.attrs['class']:
+            count = len([node for node in p.contents if isinstance(node, Tag) if node.name == 'br'])
+            return '\\\\' if count == 1 else f'\\vspace{{{count}\\baselineskip}}'
+        elif 'split' in p.attrs['class']:
+            return '----------\\\\'
     if not p.text.strip():
         return '\\\\'
 

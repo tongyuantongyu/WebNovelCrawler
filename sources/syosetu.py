@@ -1,3 +1,4 @@
+import copy
 from datetime import datetime
 import re
 import sys
@@ -10,6 +11,15 @@ from tqdm import tqdm
 from util import Chapter, Episode
 from .base import Base
 from .tools import *
+
+
+zygote = BeautifulSoup('<p></p>', 'lxml').find('p')
+
+
+def make_tag(name):
+    tag = copy.copy(zygote)
+    tag.name = name
+    return tag
 
 
 class Syosetu(Base):
@@ -40,16 +50,16 @@ class Syosetu(Base):
         return "novel18" if self.is_r18 else "ncode"
 
     def incremental_parse_syosetu_menu(self, content: BeautifulSoup):
-        menu_el = content.select_one('.index_box')
+        menu_el = content.select_one('.p-eplist')
         assert menu_el is not None, "Can't find menu"
         for el in menu_el:
             match el:
-                case Tag(attrs={'class': 'chapter_title'}):
+                case Tag(attrs={'class': 'p-eplist__chapter-title'}):
                     self.menu.push_item(Chapter('', el.text, 1))
-                case Tag(attrs={'class': 'novel_sublist2'}):
+                case Tag(attrs={'class': 'p-eplist__sublist'}):
                     link = el.select_one('a')
-                    create = el.select_one('.long_update').text.removesuffix('（改）').strip()
-                    update = el.select_one('.long_update span')
+                    create = el.select_one('.p-eplist__update').text.strip().removesuffix('（改）').strip()
+                    update = el.select_one('.p-eplist__update span')
                     if update is not None:
                         update = update['title'].removesuffix(' 改稿')
                     else:
@@ -88,9 +98,9 @@ class Syosetu(Base):
         self.description = content.select_one('#novel_ex').text.strip()
         self.incremental_parse_syosetu_menu(content)
 
-        pager = content.select_one('.novelview_pager')
+        pager = content.select_one('.c-pager__pager')
         if pager is not None:
-            last = pager.select_one('.novelview_pager-last')
+            last = pager.select_one('.c-pager__item--last')
             pages = int(last['href'].split('?p=')[-1])
             print(f"Multi page metadata with {pages} pages.")
 
@@ -111,7 +121,17 @@ class Syosetu(Base):
             page = await self.get_retry(f"https://{self.site}.syosetu.com/{self.book_id}/{episode.id}/")
 
         content = BeautifulSoup(page.content, "lxml-xml")
-        content = content.select_one("#novel_honbun")
+        contents = content.select(".p-novel__text")
+        if not contents:
+            raise RuntimeError("Can't find content")
+        content = contents[0]
+        for extra in contents[1:]:
+            separator = make_tag('p')
+            separator.attrs = {'class': 'split'}
+            separator.append(make_tag('hr'))
+            content.append(separator)
+            content.extend(extra)
+
         content.attrs = {'class': 'content'}
 
         # clean id on <p> and mark blank element
