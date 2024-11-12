@@ -136,7 +136,8 @@ class Syosetu(Base):
 
         # clean id on <p> and mark blank element
         for p in content.select('p'):
-            del p.attrs['id']
+            if 'id' in p.attrs:
+                del p.attrs['id']
             if all(isinstance(t, Tag) and t.name == 'br' for t in p):
                 p.attrs['class'] = 'blank'
 
