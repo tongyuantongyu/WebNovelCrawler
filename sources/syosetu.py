@@ -75,7 +75,7 @@ class Syosetu(Base):
     async def fetch_metadata_extra(self, page, recv: trio.Event, send: trio.Event):
         async with self.limiter:
             page = await self.get_retry(f"https://{self.site}.syosetu.com/{self.book_id}/?p={page}")
-        content = BeautifulSoup(page.content, "lxml-xml")
+        content = BeautifulSoup(page.content, "lxml")
 
         await recv.wait()
         self.incremental_parse_syosetu_menu(content)
@@ -92,7 +92,7 @@ class Syosetu(Base):
 
         assert page.is_success, "unexpected redirect"
 
-        content = BeautifulSoup(page.content, "lxml-xml")
+        content = BeautifulSoup(page.content, "lxml")
         self.title = content.find('title').text.strip()  # <---
         self.author = content.select_one('meta[name="twitter:creator"]').attrs['content'].strip()
         self.description = content.select_one('#novel_ex').text.strip()
