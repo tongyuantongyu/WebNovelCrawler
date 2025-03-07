@@ -54,9 +54,9 @@ class Syosetu(Base):
         assert menu_el is not None, "Can't find menu"
         for el in menu_el:
             match el:
-                case Tag(attrs={'class': 'p-eplist__chapter-title'}):
+                case Tag(attrs={'class': ['p-eplist__chapter-title']}):
                     self.menu.push_item(Chapter('', el.text, 1))
-                case Tag(attrs={'class': 'p-eplist__sublist'}):
+                case Tag(attrs={'class': ['p-eplist__sublist']}):
                     link = el.select_one('a')
                     create = el.select_one('.p-eplist__update').text.strip().removesuffix('（改）').strip()
                     update = el.select_one('.p-eplist__update span')
