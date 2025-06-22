@@ -89,7 +89,14 @@ class MakeTex(Base):
         os.makedirs(folder, exist_ok=True)
         entries = [item for item in linear_menu.items if isinstance(item, Episode)]
         for idx, item in enumerate(tqdm(entries, desc="Render episodes", file=sys.stdout)):
-            tex = render_episode(episodes[item.id])
-            with open(folder / f"{idx + 1:0>4}.tex", "wb") as episode:
-                episode.write(tex.encode())
+            tex = render_episode(episodes[item.id]).encode()
+            file = folder / f"{idx + 1:0>4}.tex"
+            try:
+                with open(file, "rb") as episode:
+                    if episode.read() == tex:
+                        continue
+            except FileNotFoundError:
+                pass
+            with open(file, "wb") as episode:
+                episode.write(tex)
         print(f"Book {book_id} saved to {folder}")

@@ -82,6 +82,7 @@ class MakeEpubCommon(Base, ABC):
                 return epub.Link(page.file_name, item.title, item.id)
             elif isinstance(item, NChapter):
                 return epub.Section(item.title), [build_item(sub_item) for sub_item in item.items]
+            assert False, "Unknown item"
 
         ebook.toc = [build_item(item) for item in menu.items]
         ebook.add_item(epub.EpubNcx())
