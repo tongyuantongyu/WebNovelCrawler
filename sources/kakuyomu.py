@@ -4,7 +4,7 @@ import re
 from datetime import datetime
 
 import httpx
-import trio
+import anyio
 from bs4 import BeautifulSoup
 
 from util import Chapter, Episode
@@ -59,8 +59,8 @@ query_episodes = """query GetWorkPage($workId: ID!) {
 class Kakuyomu(Base):
     source = "kakuyomu"
 
-    def __init__(self, book_id, limit=math.inf, retry=3):
-        super().__init__(book_id, limit, retry, source_unique_episode_id=True)
+    def __init__(self, book_id, limit=math.inf, tries=3):
+        super().__init__(book_id, limit, tries, source_unique_episode_id=True)
 
         self.client.headers.update({"X-Requested-With": "XMLHttpRequest"})
         self.client.timeout = httpx.Timeout(60)
@@ -87,7 +87,7 @@ class Kakuyomu(Base):
 
     async def load_episodes(self):
         if self.episodes_loaded is None:
-            self.episodes_loaded = trio.Event()
+            self.episodes_loaded = anyio.Event()
         else:
             await self.episodes_loaded.wait()
             return

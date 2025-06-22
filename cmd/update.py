@@ -1,6 +1,6 @@
 from typing import Type
 
-import trio
+import anyio
 
 import sources
 from util import NovelDB
@@ -18,4 +18,5 @@ class Update(Base):
 
         for book in books:
             fetcher: sources.Base = sources.Base.sources[book.source](book.source_id)
-            trio.run(fetcher.fetch)
+            anyio.run(fetcher.fetch)
+            print()

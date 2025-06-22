@@ -7,7 +7,7 @@ import pickle
 import sys
 from typing import Tuple, Dict, Type
 
-import trio
+import anyio
 import httpx
 from tqdm import tqdm
 
@@ -24,7 +24,7 @@ def create_or_append(dict_, key, value):
 class Base(metaclass=make_track_sub_meta("source")):
     sources: Dict[str, Type[Base]] = {}
 
-    def __init__(self, book_id, limit=2, retry=3, source_unique_episode_id=True):
+    def __init__(self, book_id, limit=2, tries=3, source_unique_episode_id=True):
         self.client = httpx.AsyncClient(
             http2=True,
             headers={
@@ -47,7 +47,7 @@ class Base(metaclass=make_track_sub_meta("source")):
         self.db = NovelDB()
 
         self.limit = limit
-        self.retry = retry
+        self.tries = tries
 
         self.retry_count = 0
 
@@ -62,7 +62,7 @@ class Base(metaclass=make_track_sub_meta("source")):
 
     async def send_retry(self, request: httpx.Request):
         result = None
-        for i in range(self.retry):
+        for i in range(self.tries):
             try:
                 result = await self.client.send(request)
             except httpx.TimeoutException as e:
@@ -71,12 +71,13 @@ class Base(metaclass=make_track_sub_meta("source")):
                 if result.is_success or result.has_redirect_location:
                     return result
                 print(f"Failed {request.method} {request.url} (Attempt #{i + 1}): {result.reason_phrase}")
-            if i + 1 != self.retry:
+            if i + 1 != self.tries:
                 self.retry_count += 1
                 if self.progress is not None:
                     self.progress.set_postfix({"retry": self.retry_count})
-                await trio.sleep(1)
+                await anyio.sleep(1)
         result.raise_for_status()
+        assert False, "Should raise"
 
     async def get_retry(self, url, *args, **kwargs):
         return await self.send_retry(self.client.build_request("GET", url, *args, **kwargs))
@@ -194,10 +195,10 @@ class Base(metaclass=make_track_sub_meta("source")):
 
         if episodes:
             with tqdm(desc="Fetching episodes", total=len(episodes), file=sys.stdout) as self.progress:
-                async with trio.open_nursery() as nursery:
-                    self.limiter = trio.CapacityLimiter(self.limit)
+                async with anyio.create_task_group() as tg:
+                    self.limiter = anyio.CapacityLimiter(self.limit)
                     for episode in episodes:
-                        nursery.start_soon(self.save_episode, episode)
+                        tg.start_soon(self.save_episode, episode)
             self.progress = None
 
         print(f"Book {self.composite_source} done.")

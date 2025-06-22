@@ -15,8 +15,8 @@ class Alphapolis(Base):
     zone = zoneinfo.ZoneInfo('Asia/Tokyo')
     p = BeautifulSoup('<p></p>', 'lxml').find('p')
 
-    def __init__(self, book_id, limit=2, retry=3):
-        super().__init__(book_id, limit, retry, source="alphapolis", source_unique_episode_id=True)
+    def __init__(self, book_id, limit=2, tries=3):
+        super().__init__(book_id, limit, tries, source="alphapolis", source_unique_episode_id=True)
 
     confident_re = re.compile(r"(https?://)?www\.alphapolis\.co\.jp/novel/(?P<id>[0-9]{8,9}/[0-9]{8,9})/?")
     maybe_confident_re = re.compile(r"[0-9]{8,9}/[0-9]{8,9}")

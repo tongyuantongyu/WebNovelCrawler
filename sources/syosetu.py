@@ -4,7 +4,7 @@ import re
 import sys
 import zoneinfo
 
-import trio
+import anyio
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
@@ -26,8 +26,8 @@ class Syosetu(Base):
     source = "syosetu"
     zone = zoneinfo.ZoneInfo('Asia/Tokyo')
 
-    def __init__(self, book_id, limit=2, retry=3):
-        super().__init__(book_id, limit, retry, source_unique_episode_id=True)
+    def __init__(self, book_id, limit=2, tries=3):
+        super().__init__(book_id, limit, tries, source_unique_episode_id=True)
 
         self.client.cookies.update({'over18': 'yes'})
         self.is_r18 = False
@@ -72,7 +72,7 @@ class Syosetu(Base):
 
                     self.menu.push_item(Episode(episode_id, title, version, creation))
 
-    async def fetch_metadata_extra(self, page, recv: trio.Event, send: trio.Event):
+    async def fetch_metadata_extra(self, page, recv: anyio.Event, send: anyio.Event):
         async with self.limiter:
             page = await self.get_retry(f"https://{self.site}.syosetu.com/{self.book_id}/?p={page}")
         content = BeautifulSoup(page.content, "lxml")
@@ -105,14 +105,14 @@ class Syosetu(Base):
             print(f"Multi page metadata with {pages} pages.")
 
             with tqdm(desc="Fetching metadata", total=pages, initial=1, file=sys.stdout) as self.progress:
-                async with trio.open_nursery() as nursery:
-                    recv = trio.Event()
+                async with anyio.create_task_group() as tg:
+                    recv = anyio.Event()
                     recv.set()
-                    self.limiter = trio.CapacityLimiter(self.limit)
+                    self.limiter = anyio.CapacityLimiter(self.limit)
 
                     for i in range(2, pages + 1):
-                        send = trio.Event()
-                        nursery.start_soon(self.fetch_metadata_extra, i, recv, send)
+                        send = anyio.Event()
+                        tg.start_soon(self.fetch_metadata_extra, i, recv, send)
                         recv = send
             self.progress = None
 

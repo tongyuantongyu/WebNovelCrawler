@@ -1,6 +1,6 @@
 from typing import Type
 
-import trio
+import anyio
 
 import sources
 from .base import Base
@@ -13,4 +13,4 @@ class Fetch(Base):
 
     def execute(self, source: Type[sources.Base], source_id: str):
         fetcher: sources.Base = source(source_id)
-        trio.run(fetcher.fetch)
+        anyio.run(fetcher.fetch)

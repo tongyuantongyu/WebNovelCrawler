@@ -1,4 +1,4 @@
-trio
+anyio
 beautifulsoup4
 tqdm
 EbookLib
