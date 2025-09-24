@@ -71,6 +71,10 @@ class NovelDB:
         books = self.cur.fetchall()
         return books
 
+    def remove_book(self, book_id):
+        self.cur.execute("DELETE FROM book WHERE id == ?", (book_id,))
+        self.db.commit()
+
     # Episode management
 
     def add_episode(self, book_id, source_id, title, content, version, creation):
@@ -109,6 +113,10 @@ class NovelDB:
         episodes = self.cur.fetchall()
         return episodes
 
+    def remove_episode(self, book_id):
+        self.cur.execute("DELETE FROM episode WHERE book_id == ?", (book_id,))
+        self.db.commit()
+
     # Episode ruby management
 
     def add_rubified(self, book_id, source_id, title, content, version, creation):
@@ -138,3 +146,7 @@ class NovelDB:
                          , (book_id, book_id))
         episodes = self.cur.fetchall()
         return episodes
+
+    def remove_rubified(self, book_id):
+        self.cur.execute("DELETE FROM episode_ruby WHERE book_id == ?", (book_id,))
+        self.db.commit()
