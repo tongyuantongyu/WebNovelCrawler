@@ -32,7 +32,7 @@ class Init(Base):
                 book_id INTEGER,
                 source_id TEXT,
                 title TEXT,
-                content TEXT,
+                content BLOB,
                 version INTEGER, --date
                 creation INTEGER, --date
                 latest INTEGER,  --bool
@@ -47,11 +47,11 @@ class Init(Base):
                 book_id INTEGER,
                 source_id TEXT,
                 title TEXT,
-                content TEXT,
+                content BLOB,
                 version INTEGER, --date
                 creation INTEGER, --date
                 latest INTEGER,  --bool
                 FOREIGN KEY(book_id) REFERENCES book(id)
             )""")
 
-        cur.execute("""CREATE INDEX IF NOT EXISTS episode_book ON episode_ruby(book_id) WHERE (latest == TRUE)""")
+        cur.execute("""CREATE INDEX IF NOT EXISTS episode_ruby_book ON episode_ruby(book_id) WHERE (latest == TRUE)""")

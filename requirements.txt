@@ -5,3 +5,4 @@ EbookLib
 Janome
 pykakasi
 httpx
+zstandard
