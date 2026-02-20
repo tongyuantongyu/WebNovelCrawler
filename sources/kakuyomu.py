@@ -68,9 +68,9 @@ class Kakuyomu(Base):
         self.episodes_loaded = None
         self.progress = None
 
-    confident_re = re.compile(r"(https?://)?kakuyomu\.jp/works/(?P<id>[0-9]{19,20})/?")
-    maybe_confident_re = re.compile(r"(168[0-9]{17})|(117[0-9]{16})")
-    maybe_re = re.compile(r"[0-9]{19,20}")
+    confident_re = re.compile(r"(https?://)?kakuyomu\.jp/works/(?P<id>[0-9]{18,20})/?")
+    maybe_confident_re = re.compile(r"(168[0-9]{17})|(117[0-9]{16})|(82[0-9]{16})")
+    maybe_re = re.compile(r"[0-9]{18,20}")
 
     @classmethod
     def sniff(cls, source):
