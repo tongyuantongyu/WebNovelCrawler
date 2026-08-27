@@ -1,3 +1,4 @@
+import asyncio
 import copy
 from datetime import datetime
 import re
@@ -5,6 +6,7 @@ import sys
 import zoneinfo
 
 import anyio
+import bs4
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
@@ -34,6 +36,8 @@ class Syosetu(Base):
 
     confident_re = re.compile(r"(https?://)?(ncode|novel18)\.syosetu\.com/(?P<id>n[0-9]{4}[a-z]{1,2})/?")
     maybe_re = re.compile(r"n[0-9]{4}[a-z]{1,2}")
+
+    image_re = re.compile(r"//(?P<user>\d+)\.mitemin\.net/i(?P<image>\d+)")
 
     @classmethod
     def sniff(cls, source):
@@ -116,6 +120,17 @@ class Syosetu(Base):
                         recv = send
             self.progress = None
 
+    async def fetch_image(self, target):
+        user, image = target
+        page = await self.get_retry(f"https://{user}.mitemin.net/i{image}/")
+        content = BeautifulSoup(page.content, "lxml-xml")
+        link = content.select_one('.imageview > a')
+        if link is None or link.attrs.get('href') is None:
+            return None
+        target = link.attrs.get('href')
+        page = await self.get_retry(target)
+        return page.content
+
     async def fetch_episode(self, episode: Episode):
         async with self.limiter:
             page = await self.get_retry(f"https://{self.site}.syosetu.com/{self.book_id}/{episode.id}/")
@@ -134,12 +149,29 @@ class Syosetu(Base):
 
         content.attrs = {'class': 'content'}
 
-        # clean id on <p> and mark blank element
+        # clean id on <p>, mark blank element, fetch images
+        images = []
         for p in content.select('p'):
             if 'id' in p.attrs:
                 del p.attrs['id']
             if all(isinstance(t, Tag) and t.name == 'br' for t in p):
                 p.attrs['class'] = 'blank'
+
+            img: bs4.Tag = p.select_one('a')
+            if img is not None:
+                href: str = img.attrs.get('href', '')
+                if match := self.image_re.match(href):
+                    user, image = match.group('user'), match.group('image')
+
+                    real_img = make_tag('img')
+                    real_img.attrs = {'src': f'images/{user}_{image}.png'}
+                    img.replace_with(real_img)
+                    images.append((user, image))
+
+        image_data: list[bytes] = await asyncio.gather(*[self.fetch_image(image) for image in images])
+        for (user, image), data in zip(images, image_data):
+            if data is not None:
+                self.db.add_extra(self.book_db_id, episode.id, f'{user}_{image}', 'image', data)
 
         normalize_ruby_emphasis(content)
 

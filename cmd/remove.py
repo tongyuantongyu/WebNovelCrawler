@@ -14,6 +14,7 @@ class Remove(Base):
         db = NovelDB()
         book = db.find_book(source_id, source.source)
 
+        db.remove_extra(book.id)
         db.remove_rubified(book.id)
         db.remove_episode(book.id)
         db.remove_book(book.id)

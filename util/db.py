@@ -239,3 +239,28 @@ class NovelDB:
     def remove_rubified(self, book_id):
         self.cur.execute("DELETE FROM episode_ruby WHERE book_id == ?", (book_id,))
         self.db.commit()
+
+    def add_extra(self, book_id, source_id, source, type_, content):
+        self.cur.execute("INSERT INTO "
+                         "extra(book_id, source_id, source, type, content) "
+                         "VALUES(?, ?, ?, ?, ?)",
+                         (book_id, source_id, source, type_, content))
+        self.db.commit()
+
+    def findall_extra(self, book_id, source_id=None):
+        if source_id is None:
+            self.cur.execute("SELECT * FROM extra WHERE book_id == ?",
+                             (book_id,))
+        else:
+            self.cur.execute("SELECT * FROM extra WHERE book_id == ? AND source_id == ?",
+                             (book_id, source_id))
+        extra = self.cur.fetchall()
+        return extra
+
+    def remove_extra(self, book_id, source_id=None):
+        if source_id is None:
+            self.cur.execute("DELETE FROM extra WHERE book_id == ?", (book_id,))
+        else:
+            self.cur.execute("DELETE FROM extra WHERE book_id == ? AND source_id == ?",
+                             (book_id, source_id))
+        self.db.commit()

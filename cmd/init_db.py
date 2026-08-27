@@ -55,3 +55,17 @@ class Init(Base):
             )""")
 
         cur.execute("""CREATE INDEX IF NOT EXISTS episode_ruby_book ON episode_ruby(book_id) WHERE (latest == TRUE)""")
+
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS extra(
+                id INTEGER PRIMARY KEY,
+                book_id INTEGER,
+                source_id TEXT,
+                source TEXT,
+                type TEXT,
+                content BLOB,
+                FOREIGN KEY(book_id) REFERENCES book(id)
+           )"""
+        )
+
+        cur.execute("""CREATE INDEX IF NOT EXISTS extra_book ON extra(book_id)""")

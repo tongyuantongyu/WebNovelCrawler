@@ -1,3 +1,4 @@
+import abc
 import os
 import pickle
 from abc import ABC
@@ -52,8 +53,12 @@ def render_episode(episode):
 
 class MakeEpubCommon(Base, ABC):
     parametric = True
-    db_method = None
     target_folder = ""
+
+    @classmethod
+    @abc.abstractmethod
+    def db_method(cls, db: NovelDB, book_id: int):
+        pass
 
     @classmethod
     def execute(cls, source: Type[sources.Base], source_id: str):
@@ -64,6 +69,7 @@ class MakeEpubCommon(Base, ABC):
         linear_menu: LinearMenu = pickle.loads(book.menu)
         menu = linear_menu.build_menu()
         episodes = {i.source_id: i for i in cls.db_method(db, book.id)}
+        extras = db.findall_extra(book.id)
 
         ebook = epub.EpubBook()
         ebook.set_identifier(book_id)
@@ -87,6 +93,17 @@ class MakeEpubCommon(Base, ABC):
         ebook.toc = [build_item(item) for item in menu.items]
         ebook.add_item(epub.EpubNcx())
         ebook.add_item(epub.EpubNav())
+
+        added = set()
+        for extra in extras:
+            if extra.type == 'image':
+                if extra.source in added:
+                    continue
+                added.add(extra.source)
+                ebook.add_item(epub.EpubImage(
+                    file_name=f'images/{extra.source}.png',
+                    content=extra.content,
+                ))
 
         epub_file = book.title[:40]
         for char in "\\/?*:\"|<>":

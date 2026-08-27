@@ -42,7 +42,12 @@ class Base(metaclass=make_track_sub_meta("source")):
                 'Sec-Fetch-Site': 'same-origin',
                 'Sec-Fetch-User': '?1',
                 'Upgrade-Insecure-Requests': '1',
-            }
+            },
+            limits=httpx.Limits(
+                max_connections=limit,
+                max_keepalive_connections=limit,
+                keepalive_expiry=60
+            )
         )
         self.db = NovelDB()
 
